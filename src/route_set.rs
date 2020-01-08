@@ -17,6 +17,10 @@ pub async fn index(info: web::Path<(String, i32)>) -> Result<String> {
 	Ok(format!("Welcome {}! gender: {}", info.0, info.1))
 }
 
+pub async fn foo() -> &'static str {
+	"hello, sf二手房jl\n"
+}
+
 // get /
 pub async fn other(req: HttpRequest) -> HttpResponse {
 	HttpResponse::Ok().body(format!("Other Req {}", req.uri()))
