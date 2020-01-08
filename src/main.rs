@@ -1,5 +1,6 @@
 mod route_set;
 mod student;
+mod enumerate;
 
 use std::{thread, time};
 
@@ -44,6 +45,7 @@ async fn main() -> std::io::Result<()> {
 			// 错误的例子，尽管编译期间不报错
 			.service(route_set::test4)
 			.service(route_set::test5)
+			.service(route_set::test6)
 			.service(route_set::favicon)
 			.service(route_set::welcome)
 			.service(web::resource("/test_lambda").to(|req: HttpRequest| match *req.method() {
@@ -62,7 +64,8 @@ async fn main() -> std::io::Result<()> {
 			.service(
 				// 类似Java里的UserController上面的RequestMapping("/user")
 				web::scope("/user")
-					.service(web::resource("/test1").route(web::get().to(|req: HttpRequest| {
+					// TODO rust规范里，如果某个变量不用到，但是又不能drop那么快，则应该以下划线开头（如果是_则在赋值后立刻就会drop可能导致问题）
+					.service(web::resource("/test1").route(web::get().to(|_req: HttpRequest| {
 						HttpResponse::Ok().body("aaa")
 					})))
 					.service(web::resource("/test2").route(web::get().to(|req: HttpRequest| {

@@ -8,6 +8,7 @@ use futures::StreamExt;
 use json::JsonValue;
 use actix_web::http::StatusCode;
 use actix_session::{Session};
+use crate::enumerate::GenderEnum;
 
 // 和java里的Mapping方法不同点是，Rust里的get之类的，以及url都在在其他地方写的，所以单看route方法会很不直观
 // 所以这里建议在注释上写好get，url等方便查看（TODO 查下rust是否可以将enum转换为基础类型的值，actix是否支持自定义转换，
@@ -62,6 +63,12 @@ pub async fn test1(info: web::Path<Stud>) -> impl Responder {
 pub async fn test5(info: web::Path<(String, i32)>) -> impl Responder {
 	// 这种情况下name就必须是pub了，如果只用于serde序列化可以不是pub
 	format!("TTT {} is id {}", info.0, info.1)
+}
+
+#[get("/test6/{name}/{age}")]
+pub async fn test6(info: web::Path<(String, GenderEnum)>) -> impl Responder {
+	// 这种情况下name就必须是pub了，如果只用于serde序列化可以不是pub
+	format!("TTT {} is id {:?}", info.0, info.1)
 }
 
 // /test2?name=kkk&age=88
