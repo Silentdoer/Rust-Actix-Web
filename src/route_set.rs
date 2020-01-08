@@ -58,11 +58,26 @@ pub async fn test1(info: web::Path<Stud>) -> impl Responder {
 	format!("￥￥hello {} is id {}", info.name, info.age)
 }
 
+#[get("/test5/{name}/{age}")]
+pub async fn test5(info: web::Path<(String, i32)>) -> impl Responder {
+	// 这种情况下name就必须是pub了，如果只用于serde序列化可以不是pub
+	format!("TTT {} is id {}", info.0, info.1)
+}
+
 // /test2?name=kkk&age=88
 #[get("/test2")]
 pub async fn test2(info: web::Query<Stud>) -> impl Responder {
 	// 这种情况下name就必须是pub了，如果只用于serde序列化可以不是pub
 	format!("￥￥hello {} is sfsd {}", info.name, info.age)
+}
+
+// TODO 貌似不能这么写，会报错。。（官网上的例子貌似也是必须自己写成一个struct，如上面的Stud） /test2?name=kkk&age=88（这里的key名字可以随意。。）
+#[get("/test4")]
+pub async fn test4(info: web::Query<(String, String)>) -> impl Responder {
+	// 这种情况下name就必须是pub了，如果只用于serde序列化可以不是pub
+	let tmp = info.into_inner();
+	println!("{}, ", &tmp.0);
+	format!("RRhello {:?} is sfsd", &tmp)
 }
 
 // /test2?name=kkk&age=88；这种方式不行，有点可惜，因为String没有实现serde的Deserialize，而且也不清楚是否可以有两个Query

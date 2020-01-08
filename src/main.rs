@@ -41,6 +41,9 @@ async fn main() -> std::io::Result<()> {
 			.service(route_set::book2)
 			.service(route_set::test1)
 			.service(route_set::test2)
+			// 错误的例子，尽管编译期间不报错
+			.service(route_set::test4)
+			.service(route_set::test5)
 			.service(route_set::favicon)
 			.service(route_set::welcome)
 			.service(web::resource("/test_lambda").to(|req: HttpRequest| match *req.method() {
