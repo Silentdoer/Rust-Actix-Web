@@ -1,0 +1,22 @@
+[package]
+name = "demo-actix-web"
+version = "0.1.0"
+authors = ["silentdoer <silentdoer@163.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+actix-web = "2.0.0"
+actix-rt = "1.0.0"
+actix-files = "0.2.1"
+actix-session = "0.3.0"
+actix-utils = "1.0.3"
+env_logger = "0.6"
+futures = "0.3.1"
+futures-timer = "2.0.0"
+bytes = "0.5"
+serde = "1.0"
+serde_json = "1.0"
+serde_derive = "1.0"
+json = "*"
