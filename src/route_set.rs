@@ -50,6 +50,7 @@ pub async fn book(info: web::Path<i32>) -> impl Responder {
 
 #[get("/book/name/{name}")]
 pub async fn book2(req: HttpRequest) -> impl Responder {
+	// match_info().get(...)里可以用正则表达式？
 	format!("￥￥hello {} is id", req.match_info().get("name").unwrap())
 }
 

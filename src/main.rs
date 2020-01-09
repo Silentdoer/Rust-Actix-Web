@@ -61,6 +61,8 @@ async fn main() -> std::io::Result<()> {
 				// 重定向到/index请求（这里/可以不要）
 				HttpResponse::Found().header(header::LOCATION, "/index").finish()
 			})))
+			// 这个可以直接将/定位为从static目录获取index.html文件，上面的redirect还必须先写一个/index的方法
+			//.service(fs::Files::new("/", "./static/").index_file("index.html"))
 			.service(
 				// 类似Java里的UserController上面的RequestMapping("/user")
 				web::scope("/user")
@@ -82,6 +84,8 @@ async fn main() -> std::io::Result<()> {
 					// TODO 所以说一个resource请求可以有多个对应的route（或者说resource+route才是具体的匹配，但是route里面兼具提供处理方案
 					.route(
 						// route内部还能有route？
+						// TODO guard其实就是类似route，只不过它是更加细化的匹配，除了匹配Method外还能匹配Content-Type之类的
+						// 比如 guard::All(guard::Get()).and(guard::Header("content-type", "plain/text"))
 						web::route()
 							.guard(guard::Not(guard::Get()))
 							.to(HttpResponse::MethodNotAllowed),
