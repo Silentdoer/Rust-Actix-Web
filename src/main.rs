@@ -1,6 +1,9 @@
 mod route_set;
 mod student;
 mod enumerate;
+// TODO 在这个程序里这个又必须有，但是有的又可以省略下面两句代码，不知道为什么。。（莫非是redis_async版本太低所以必须用老版本的导入方式？）
+#[macro_use]
+extern crate redis_async;
 
 use std::{thread, time};
 
@@ -10,15 +13,20 @@ use std::sync::Mutex;
 use actix_web::http::{header, Method, StatusCode};
 use actix_session::CookieSession;
 use actix_files as fs;
+use actix_redis::RedisActor;
 
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
-	std::env::set_var("RUST_LOG", "actix_web=info, actix_server=info");
+	// info trace debug
+	std::env::set_var("RUST_LOG", "actix_web=debug, actix_server=debug");
 	env_logger::init();
 
 	// 所有访问共享的数据，且会加锁访问，这里的Data其实就是Arc的re-export
 	let counter = web::Data::new(Mutex::new(0usize));
 	HttpServer::new(move || {
+		// redis（TODO 这个必须写到里面，写到外面，比如counter的位置会报错，暂不知道为什么）
+		let redis_addr = RedisActor::start("localhost:6379");
+
 		App::new()
 			.app_data(counter.clone())
 			// 开启压缩（默认的貌似是gzip？）
@@ -28,6 +36,7 @@ async fn main() -> std::io::Result<()> {
 			.wrap(CookieSession::signed(&[0; 32]).secure(false))
 			// 貌似是指JSON数据最大不超过4096个字节？？（但是用8测试了下好像没有生效，还是说虽然填了8但是实际上它有个最小值?）
 			.data(web::JsonConfig::default().limit(4096))
+			.data(redis_addr)
 			// 虽然可以直接用route，但是最好还是外部包一层service
 			.route("/name/{name}/gender/{gender}", web::get().to(route_set::index))
 			.service(web::resource("/ttt").route(web::get().to(route_set::foo)))
@@ -48,6 +57,8 @@ async fn main() -> std::io::Result<()> {
 			.service(route_set::test6)
 			.service(route_set::favicon)
 			.service(route_set::welcome)
+			.service(route_set::redis_set)
+			.service(route_set::redis_test)
 			.service(web::resource("/test_lambda").to(|req: HttpRequest| match *req.method() {
 				Method::GET => HttpResponse::Ok(),
 				Method::POST => HttpResponse::MethodNotAllowed(),

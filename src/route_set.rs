@@ -1,3 +1,4 @@
+
 use actix_web::{web, get, put, post, Result, HttpResponse, HttpRequest, Responder, error, Error, HttpMessage};
 use actix_files as fs;
 
@@ -7,8 +8,12 @@ use bytes::{BytesMut, Bytes};
 use futures::StreamExt;
 use json::JsonValue;
 use actix_web::http::StatusCode;
-use actix_session::{Session};
+use actix_session::Session;
 use crate::enumerate::GenderEnum;
+use actix::Addr;
+use actix::prelude::*;
+use actix_redis::{RedisActor, Command};
+use redis_async::resp::RespValue;
 
 // 和java里的Mapping方法不同点是，Rust里的get之类的，以及url都在在其他地方写的，所以单看route方法会很不直观
 // 所以这里建议在注释上写好get，url等方便查看（TODO 查下rust是否可以将enum转换为基础类型的值，actix是否支持自定义转换，
@@ -174,4 +179,39 @@ pub async fn welcome(session: Session, req: HttpRequest) -> Result<HttpResponse>
 
 pub async fn p404() -> Result<fs::NamedFile> {
 	Ok(fs::NamedFile::open("static/404.html")?.set_status_code(StatusCode::NOT_FOUND))
+}
+
+#[post("/redisSet")]
+pub async fn redis_set(info: web::Json<Stud>, redis: web::Data<Addr<RedisActor>>)
+					   -> Result<HttpResponse, Error> {
+	println!("hello redis set");
+	let info = info.into_inner();
+	// SET就是redis-cli里的set命令（还有hset等；后面的参数顺序其实就是和redis-cli里的顺序一致
+	// 现在只是创建了这个命令，但还没执行（应该
+	let name = redis.send(Command(resp_array!["SET", "namespace1:key:name", info.name]));
+	let age = redis.send(Command(resp_array!["SET", "namespace1:key:age", info.age]));
+	// 执行命令（或者其实上面已经提交了命令，这里只是join？
+	let res: Vec<Result<RespValue, Error>>
+		= futures::future::join_all(vec![name, age].into_iter())
+		.await
+		.into_iter()
+		.map(|item| {
+			item.map_err(Error::from)
+				.and_then(|res| res.map_err(Error::from))
+		}).collect();
+
+	if !res.iter().all(|res| match res {
+		Ok(RespValue::SimpleString(x)) if x == "OK" => true,
+		_ => false,
+	}) {
+		Ok(HttpResponse::InternalServerError().finish())
+	} else {
+		Ok(HttpResponse::Ok().body("successfully cached values"))
+	}
+}
+
+#[get("/redisTest")]
+pub async fn redis_test(redis: web::Data<Addr<RedisActor>>) -> &'static str {
+	println!("redis test ok");
+	return "sjfkl";
 }
