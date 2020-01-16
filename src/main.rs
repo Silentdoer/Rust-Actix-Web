@@ -1,6 +1,7 @@
 mod route_set;
 mod student;
 mod enumerate;
+mod custom_error;
 // TODO 在这个程序里这个又必须有，但是有的又可以省略下面两句代码，不知道为什么。。（莫非是redis_async版本太低所以必须用老版本的导入方式？）
 #[macro_use]
 extern crate redis_async;
@@ -17,8 +18,8 @@ use actix_redis::RedisActor;
 
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
-	// info trace debug
-	std::env::set_var("RUST_LOG", "actix_web=debug, actix_server=debug");
+	// info trace debug，其实这里可以给出warn或error级别的等级，
+	std::env::set_var("RUST_LOG", "actix_web=info, actix_server=info");
 	env_logger::init();
 
 	// 所有访问共享的数据，且会加锁访问，这里的Data其实就是Arc的re-export
@@ -61,6 +62,9 @@ async fn main() -> std::io::Result<()> {
 			.service(route_set::redis_test)
 			.service(route_set::redis_del)
 			.service(route_set::redis_hset)
+			.service(route_set::do_something)
+			.service(route_set::custom_error)
+			.service(route_set::custom_error2)
 			.service(web::resource("/test_lambda").to(|req: HttpRequest| match *req.method() {
 				Method::GET => HttpResponse::Ok(),
 				Method::POST => HttpResponse::MethodNotAllowed(),

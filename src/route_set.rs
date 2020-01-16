@@ -13,6 +13,8 @@ use actix::Addr;
 use actix::prelude::*;
 use actix_redis::{RedisActor, Command};
 use redis_async::resp::RespValue;
+use redis_async::*;
+use crate::custom_error::{do_something_random, CustomError, CommonError};
 
 // 和java里的Mapping方法不同点是，Rust里的get之类的，以及url都在在其他地方写的，所以单看route方法会很不直观
 // 所以这里建议在注释上写好get，url等方便查看（TODO 查下rust是否可以将enum转换为基础类型的值，actix是否支持自定义转换，
@@ -196,6 +198,8 @@ pub async fn redis_set(info: web::Json<Stud>, redis: web::Data<Addr<RedisActor>>
 		.await
 		.into_iter()
 		.map(|item| {
+			// map_err是针对Result的方法，它的作用是当Result是Err的时候用Error::from将异常转换为Error（actix里的）
+			// and_then也是Result里的
 			item.map_err(Error::from)
 				.and_then(|res| res.map_err(Error::from))
 		}).collect();
@@ -254,7 +258,7 @@ pub async fn redis_del(key: web::Path<String>, redis: web::Data<Addr<RedisActor>
 pub async fn redis_hset(info: web::Path<(String, String, String)>
 						, redis: web::Data<Addr<RedisActor>>) -> Result<HttpResponse, Error> {
 	println!("redis del in");
-	// TODO 不是所有的“数组”都支持最后一个元素可以有,，比如这里的resp_array![..]就不行（至少当前版本不行）
+	// TODO 这里必须是&info.0，而上面的不用貌似是因为resp_array!对参数的处理不同导致的。。
 	let res = redis.send(Command(resp_array![
 									"HSET",
 									&info.0,
@@ -269,5 +273,44 @@ pub async fn redis_hset(info: web::Path<(String, String, String)>
 		_ => {
 			Ok(HttpResponse::InternalServerError().finish())
 		}
+	}
+}
+
+#[get("/do_something")]
+pub async fn do_something() -> Result<HttpResponse, Error> {
+	// await其实就类似future.get()
+	do_something_random().await?;
+	Ok(HttpResponse::Ok().body("Nothing happened."))
+}
+
+#[get("/custom_error/{id}")]
+pub async fn custom_error(r#type: web::Path<i32>) -> Result<HttpResponse, Error> {
+	/*if rng.gen_bool(2.0 / 10.0) {
+		Ok(())
+	} else {
+		Err(rand::random::<CustomError>())
+	}*/
+	match r#type.into_inner() {
+		1 => Err(CustomError::CustomOne)?,
+		2 => Err(CustomError::CustomTwo)?,
+		3 => Err(CustomError::CustomThree)?,
+		_ => Err(CustomError::CustomFour)?
+	}
+}
+
+// TODO 抛了异常就会被记录（Err），并且会记录Err的所有内容，这一个不知道怎么去关闭它，想自己来实现日志打印
+// TODO 所以应该是这里弄：middleware::Logger::default()，自己实现一个，这样就不会出现重复打印问题
+// TODO 根据返回是Err然后再去记录（改了info级别后debug不打印了，但是会打印出口简单日志（不包括请求体数据））
+#[get("/custom_error2/{id}")]
+pub async fn custom_error2(r#type: web::Path<i32>) -> Result<HttpResponse, Error> {
+	/*if rng.gen_bool(2.0 / 10.0) {
+		Ok(())
+	} else {
+		Err(rand::random::<CustomError>())
+	}*/
+	match r#type.into_inner() {
+		1 => Err(CommonError::System(5000, "系统异常，这个异常一般来自其他地方抛出重新放到这里".to_owned(), Some("来自route_set custom_error2".to_owned())))?,
+		2 => Err(CommonError::Logic(4000, "系统繁忙，请稍后重试".to_owned(), Some("来自route_set custom_error2".to_owned())))?,
+		_ => Err(CommonError::General(3000, "密码错误".to_owned(), None))?
 	}
 }
