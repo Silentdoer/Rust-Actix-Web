@@ -1,4 +1,3 @@
-
 use actix_web::{web, get, put, post, Result, HttpResponse, HttpRequest, Responder, error, Error, HttpMessage};
 use actix_files as fs;
 
@@ -68,6 +67,7 @@ pub async fn test1(info: web::Path<Stud>) -> impl Responder {
 #[get("/test5/{name}/{age}")]
 pub async fn test5(info: web::Path<(String, i32)>) -> impl Responder {
 	// 这种情况下name就必须是pub了，如果只用于serde序列化可以不是pub
+	// 这里又可以不需要&info.0，有点搞不懂。。
 	format!("TTT {} is id {}", info.0, info.1)
 }
 
@@ -206,12 +206,68 @@ pub async fn redis_set(info: web::Json<Stud>, redis: web::Data<Addr<RedisActor>>
 	}) {
 		Ok(HttpResponse::InternalServerError().finish())
 	} else {
-		Ok(HttpResponse::Ok().body("successfully cached values"))
+		Ok(HttpResponse::Ok().body("successfully cached values\n"))
 	}
 }
 
-#[get("/redisTest")]
-pub async fn redis_test(redis: web::Data<Addr<RedisActor>>) -> &'static str {
-	println!("redis test ok");
-	return "sjfkl";
+#[get("/redisTest/{val}")]
+pub async fn redis_test(info: web::Path<String>, redis: web::Data<Addr<RedisActor>>) -> Result<HttpResponse, Error> {
+	println!("redis test in");
+	// set命令只能一条一条执行（除非写事物操作）
+	let res = redis.send(Command(resp_array![
+									"SET",
+									"kkk",
+									info.into_inner()
+								])).await?;
+
+	match res {
+		// set成功则返回字符串OK
+		Ok(RespValue::SimpleString(x)) if x == "OK" => {
+			Ok(HttpResponse::Ok().body("successfully set\n"))
+		}
+		_ => {
+			Ok(HttpResponse::InternalServerError().finish())
+		}
+	}
+}
+
+#[get("/redis_del/{key}")]
+pub async fn redis_del(key: web::Path<String>, redis: web::Data<Addr<RedisActor>>) -> Result<HttpResponse, Error> {
+	println!("redis del in");
+	// TODO 不是所有的“数组”都支持最后一个元素可以有,，比如这里的resp_array![..]就不行（至少当前版本不行）
+	let res = redis.send(Command(resp_array![
+									"DEL",
+									key.into_inner()
+								])).await?;
+	match res {
+		// del key1 key2 ...；成功删除多少个key就会返回成功个数（integer）
+		Ok(RespValue::Integer(x)) if x == 1 => {
+			Ok(HttpResponse::Ok().body("successfully del\n"))
+		}
+		_ => {
+			Ok(HttpResponse::InternalServerError().finish())
+		}
+	}
+}
+
+#[get("/redis_hset/{key}/{field}/{value}")]
+pub async fn redis_hset(info: web::Path<(String, String, String)>
+						, redis: web::Data<Addr<RedisActor>>) -> Result<HttpResponse, Error> {
+	println!("redis del in");
+	// TODO 不是所有的“数组”都支持最后一个元素可以有,，比如这里的resp_array![..]就不行（至少当前版本不行）
+	let res = redis.send(Command(resp_array![
+									"HSET",
+									&info.0,
+									&info.1,
+									&info.2
+								])).await?;
+	match res {
+		// hset和del一样返回(integer)1【注意其实就是返回1，前面的是指类型是integer）
+		Ok(RespValue::Integer(x)) if x == 1 => {
+			Ok(HttpResponse::Ok().body("successfully hset\n"))
+		}
+		_ => {
+			Ok(HttpResponse::InternalServerError().finish())
+		}
+	}
 }

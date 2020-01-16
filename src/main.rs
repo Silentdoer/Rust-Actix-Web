@@ -59,6 +59,8 @@ async fn main() -> std::io::Result<()> {
 			.service(route_set::welcome)
 			.service(route_set::redis_set)
 			.service(route_set::redis_test)
+			.service(route_set::redis_del)
+			.service(route_set::redis_hset)
 			.service(web::resource("/test_lambda").to(|req: HttpRequest| match *req.method() {
 				Method::GET => HttpResponse::Ok(),
 				Method::POST => HttpResponse::MethodNotAllowed(),
