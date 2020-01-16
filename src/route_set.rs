@@ -1,9 +1,10 @@
-use actix_web::{web, get, put, post, Result, HttpResponse, HttpRequest, Responder, error, Error, HttpMessage};
+// 这里web::{self, BytesMut}的意思是web, web::BytesMut的意思
+use actix_web::{client::Client, web::{self, BytesMut}, get, put, post, Result, HttpResponse, HttpRequest, Responder, error, Error, HttpMessage};
 use actix_files as fs;
 
 use std::sync::Mutex;
-use crate::student::{Student, Stud};
-use bytes::{BytesMut, Bytes};
+use crate::student::{Student, Stud, NeedValidData};
+use bytes::{Bytes};
 use futures::StreamExt;
 use json::JsonValue;
 use actix_web::http::StatusCode;
@@ -15,6 +16,7 @@ use actix_redis::{RedisActor, Command};
 use redis_async::resp::RespValue;
 use redis_async::*;
 use crate::custom_error::{do_something_random, CustomError, CommonError};
+use actix_web::error::ErrorBadRequest;
 
 // 和java里的Mapping方法不同点是，Rust里的get之类的，以及url都在在其他地方写的，所以单看route方法会很不直观
 // 所以这里建议在注释上写好get，url等方便查看（TODO 查下rust是否可以将enum转换为基础类型的值，actix是否支持自定义转换，
@@ -123,7 +125,7 @@ pub async fn put1(info: web::Path<i32>, item: web::Json<Student>, req: HttpReque
 /// 直接获取请求体字节的包装类Payload
 #[post("/stud")]
 pub async fn stud_post(mut payload: web::Payload) -> Result<HttpResponse, Error> {
-	let mut body = BytesMut::with_capacity(16);
+	let mut body = bytes::BytesMut::with_capacity(16);
 	// 注意，并不是请求体所有数据到位了才会执行到这里，它可以是只到了请求头和请求行的数据就可以匹配到这里，然后这里
 	// 再进一步等待所有的数据获取完整
 	// Some(chunk)是获取到了数据，然后chunk的数据还存在正确与错误的说法，所以下面还有chunk?
@@ -313,4 +315,20 @@ pub async fn custom_error2(r#type: web::Path<i32>) -> Result<HttpResponse, Error
 		2 => Err(CommonError::Logic(4000, "系统繁忙，请稍后重试".to_owned(), Some("来自route_set custom_error2".to_owned())))?,
 		_ => Err(CommonError::General(3000, "密码错误".to_owned(), None))?
 	}
+}
+
+#[post("/validate_test")]
+pub async fn validate_test(data: web::Json<NeedValidData>, client: web::Data<Client>) -> Result<String, Error> {
+	/*let data = data.into_inner();
+	data.validate().map_err(ErrorBadRequest)?;
+	let mut res = client.get("https://baidu.com").await.map_err(Error::from)?;
+	let mut body = BytesMut::new();
+	while let Some(chunk) = res.next().await {
+		body.extend_from_slice(&chunk?);
+	}
+
+	let string = serde_json::to_string(&body).unwrap();
+	println!("百度数据：{}", string);
+	Ok(string)*/
+	Ok("暂时没用".to_owned())
 }

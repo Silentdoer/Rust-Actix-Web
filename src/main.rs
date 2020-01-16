@@ -9,12 +9,13 @@ extern crate redis_async;
 use std::{thread, time};
 
 use actix_rt::System;
-use actix_web::{middleware, web, guard, App, HttpRequest, HttpServer, HttpResponse, Responder};
+use actix_web::{middleware, web, guard, App, HttpRequest, HttpServer, HttpResponse, Responder, client::Client};
 use std::sync::Mutex;
 use actix_web::http::{header, Method, StatusCode};
 use actix_session::CookieSession;
 use actix_files as fs;
 use actix_redis::RedisActor;
+use actix_web::web::ServiceConfig;
 
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
@@ -26,9 +27,15 @@ async fn main() -> std::io::Result<()> {
 	let counter = web::Data::new(Mutex::new(0usize));
 	HttpServer::new(move || {
 		// redis（TODO 这个必须写到里面，写到外面，比如counter的位置会报错，暂不知道为什么）
+		// TODO 好像是说在里面创建的对象且设置为data，则redis_addr是ThreadLocal的对象？
 		let redis_addr = RedisActor::start("localhost:6379");
 
 		App::new()
+			// 可以将service之类的定义放到configure方法中（该方法类似XxConfig对象，包括了所有的配置），不过用处不是很大
+			.configure(|cfg: &mut ServiceConfig| {
+				//cfg.service().data().external_resource().route()
+				cfg.service(route_set::validate_test);
+			})
 			.app_data(counter.clone())
 			// 开启压缩（默认的貌似是gzip？）
 			.wrap(middleware::Compress::default())
@@ -37,6 +44,7 @@ async fn main() -> std::io::Result<()> {
 			.wrap(CookieSession::signed(&[0; 32]).secure(false))
 			// 貌似是指JSON数据最大不超过4096个字节？？（但是用8测试了下好像没有生效，还是说虽然填了8但是实际上它有个最小值?）
 			.data(web::JsonConfig::default().limit(4096))
+			.data(Client::default())
 			.data(redis_addr)
 			// 虽然可以直接用route，但是最好还是外部包一层service
 			.route("/name/{name}/gender/{gender}", web::get().to(route_set::index))

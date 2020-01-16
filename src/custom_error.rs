@@ -40,6 +40,8 @@ pub enum CommonError {
 impl std::fmt::Display for CommonError {
 	// TODO 生命周期也能用推断，即 '_ ？
 	fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+		/*if let CommonError::System(code, message, trace) = self {
+		}*/
 		match self {
 			CommonError::System(code, message, trace) => {
 				write!(f, "({}, {})", code, message)

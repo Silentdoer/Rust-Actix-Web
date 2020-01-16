@@ -1,4 +1,6 @@
 use serde_derive::{Serialize, Deserialize};
+use validator::Validate;
+use validator_derive::Validate;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Student {
@@ -11,4 +13,29 @@ pub struct Student {
 pub struct Stud {
 	pub name: String,
 	pub age: String,
+}
+
+// Validate功能有问题。。
+#[derive(Debug, Validate, Deserialize, Serialize)]
+pub struct NeedValidData {
+	#[validate(length(min = 1, max = 10))]
+	id: String,
+	// phone和email用不了
+	//#[validate(email)]
+	//email: String,
+	#[validate(range(min = 18, max = 36))]
+	age: i32,
+	// 这个phone格式应该是美国那边的吧？（看下怎么自定义。。）
+	//#[validate(phone)]
+	//phone: String,
+	// 这个如果是中文的url估计也会提示有问题，可能还需要自定义
+	//#[validate(url)]
+	//site: String,
+	//#[validate(contains = "wang")]
+	//name: String,
+	//#[validate(length(equal = 4))]
+	//pro1: String,
+	//#[validate(regex = "kk.*bb")]
+	//pro2: String,
+	//#[validate(custom = "crate::validate::custom_validate")]
 }
