@@ -17,6 +17,7 @@ use redis_async::resp::RespValue;
 use redis_async::*;
 use crate::custom_error::{do_something_random, CustomError, CommonError};
 use actix_web::error::ErrorBadRequest;
+use validator::Validate;
 
 // 和java里的Mapping方法不同点是，Rust里的get之类的，以及url都在在其他地方写的，所以单看route方法会很不直观
 // 所以这里建议在注释上写好get，url等方便查看（TODO 查下rust是否可以将enum转换为基础类型的值，actix是否支持自定义转换，
@@ -319,9 +320,14 @@ pub async fn custom_error2(r#type: web::Path<i32>) -> Result<HttpResponse, Error
 
 #[post("/validate_test")]
 pub async fn validate_test(data: web::Json<NeedValidData>, client: web::Data<Client>) -> Result<String, Error> {
-	/*let data = data.into_inner();
-	data.validate().map_err(ErrorBadRequest)?;
-	let mut res = client.get("https://baidu.com").await.map_err(Error::from)?;
+	let data = data.into_inner();
+	let result: Result<_, _> = data.validate();
+	if result.is_err() {
+		return Err(CommonError::Logic(4000, "入口参数验证失败".to_owned(), None))?;
+	}
+	// 算了，HttpClient工具还是用通用的吧，用actix的不够通用
+	//let res: Result<_, _> = client.get("https://baidu.com").await?;
+	/*let mut res = client.get("https://baidu.com").await.map_err(Error::from)?;
 	let mut body = BytesMut::new();
 	while let Some(chunk) = res.next().await {
 		body.extend_from_slice(&chunk?);

@@ -2,9 +2,17 @@ mod route_set;
 mod student;
 mod enumerate;
 mod custom_error;
+mod regex_constants;
 // TODO 在这个程序里这个又必须有，但是有的又可以省略下面两句代码，不知道为什么。。（莫非是redis_async版本太低所以必须用老版本的导入方式？）
 #[macro_use]
 extern crate redis_async;
+// TODO 对于validator，下面四个都必须在lib.rs或main.rs里声明如下
+#[macro_use]
+extern crate validator_derive;
+extern crate validator;
+#[macro_use]
+extern crate serde_derive;
+extern crate serde_json;
 
 use std::{thread, time};
 
@@ -44,6 +52,7 @@ async fn main() -> std::io::Result<()> {
 			.wrap(CookieSession::signed(&[0; 32]).secure(false))
 			// 貌似是指JSON数据最大不超过4096个字节？？（但是用8测试了下好像没有生效，还是说虽然填了8但是实际上它有个最小值?）
 			.data(web::JsonConfig::default().limit(4096))
+			// 还是用第三方的通用的好一点，不用actix的
 			.data(Client::default())
 			.data(redis_addr)
 			// 虽然可以直接用route，但是最好还是外部包一层service
