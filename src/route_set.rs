@@ -211,6 +211,8 @@ pub async fn redis_set(info: web::Json<Stud>, redis: web::Data<Addr<RedisActor>>
 		Ok(RespValue::SimpleString(x)) if x == "OK" => true,
 		_ => false,
 	}) {
+		// 这里finish()是指Response数据完成，不需要body直接finish
+		// 这里body()和finish()都有完成build的作用，但是像header(..)则不会，还是返回的ResponseBuilder
 		Ok(HttpResponse::InternalServerError().finish())
 	} else {
 		Ok(HttpResponse::Ok().body("successfully cached values\n"))

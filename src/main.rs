@@ -3,6 +3,7 @@ mod student;
 mod enumerate;
 mod custom_error;
 mod regex_constants;
+
 // TODO 在这个程序里这个又必须有，但是有的又可以省略下面两句代码，不知道为什么。。（莫非是redis_async版本太低所以必须用老版本的导入方式？）
 #[macro_use]
 extern crate redis_async;
@@ -59,7 +60,10 @@ async fn main() -> std::io::Result<()> {
 			.route("/name/{name}/gender/{gender}", web::get().to(route_set::index))
 			.service(web::resource("/ttt").route(web::get().to(route_set::foo)))
 			// 不用route直接to表示任意Method都行，比如GET，HEAD，PUT；一般用于如logout这样的方法
-			.service(web::resource("/kkkk").to(route_set::kkkk))
+			.service(web::resource("/kkkk").to(route_set::kkkk)
+				// TODO guard::Header(...)表示请求必须是携带这个header，不过不好的是，值必须是application/json不能有;charset=uf8
+				// TODO 所以其实不适合用guard做Header的校验，还是自己写个middleware来做，或者在对于方法里通过request去判断
+				.guard(guard::Header("Content-Type", "application/json")))
 			.service(web::resource("/uuuu").route(web::get().to(route_set::uuuu)))
 			.service(route_set::book)
 			.service(web::resource("/post1").route(web::post().to(route_set::post1)))
@@ -110,7 +114,8 @@ async fn main() -> std::io::Result<()> {
 			)
 			.default_service(
 				// 这里的""貌似是指没有匹配到的意思？而不是说http://localhost:8088（没有最后的/）的意思
-				// TODO 经过测试""确实是指没有找到匹配的路径，http://localhost:8088是会匹配"/"的
+				// TODO 经过测试""确实是指没有找到匹配的路径(else)，http://localhost:8088是会匹配"/"的
+				// 但是上面已经是default_service()，所以这里其实可以不用给出resource？（可以参考下面注释掉的default_service）
 				web::resource("")
 					// 当没有匹配到但是是get请求，则返回404页面
 					.route(web::get().to(route_set::p404))
