@@ -3,6 +3,7 @@ mod student;
 mod enumerate;
 mod custom_error;
 mod regex_constants;
+mod custom_middleware;
 
 // TODO 在这个程序里这个又必须有，但是有的又可以省略下面两句代码，不知道为什么。。（莫非是redis_async版本太低所以必须用老版本的导入方式？）
 #[macro_use]
@@ -43,12 +44,21 @@ async fn main() -> std::io::Result<()> {
 			// 可以将service之类的定义放到configure方法中（该方法类似XxConfig对象，包括了所有的配置），不过用处不是很大
 			.configure(|cfg: &mut ServiceConfig| {
 				//cfg.service().data().external_resource().route()
-				cfg.service(route_set::validate_test);
+				cfg.service(route_set::validate_test)
+					// 无权限
+					.service(web::resource("/405").to(|req: HttpRequest| {
+						HttpResponse::Unauthorized().body("抱歉，您没有权限访问哦～")
+					}));
 			})
 			.app_data(counter.clone())
 			// 开启压缩（默认的貌似是gzip？）
 			.wrap(middleware::Compress::default())
 			.wrap(middleware::Logger::default())
+			// 这个貌似也能实现middleware的功能，传一个lambda表达式去
+			//.wrap_fn(..)
+			// 只需要结构体名即可（不是传名字即可，而是这个结构体很特别不需要{}也相当于new了对象，不过最好还是加上{}）
+			// TODO 注意，middleware的处理一定是在handler处理前和处理后处理
+			.wrap(custom_middleware::SayHi{})
 			// 是指为session分配32个字节？【返回的响应头里会有set-cookie: actix-session=xxxxxx一大串（貌似就是32字节）
 			.wrap(CookieSession::signed(&[0; 32]).secure(false))
 			// 貌似是指JSON数据最大不超过4096个字节？？（但是用8测试了下好像没有生效，还是说虽然填了8但是实际上它有个最小值?）
