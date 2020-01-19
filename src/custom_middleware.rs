@@ -64,10 +64,16 @@ impl<S, B> Service for SayHiMiddleware<S>
 		// 这个鬼地方弄了N久都不知道怎么直接返回不直接执行后面的逻辑，去它妹的；
 		// TODO 看了下官网的例子，貌似是通过定义一个返回没有权限的handler，然后发现没有权限则转发到这里去处理。。
 		if !req.headers().contains_key("Authorization") {
-			return Box::pin(async {
+			// async {}类似Future::new(..)一样，不过Future没有new方法所以用这种方式创建
+			// ，加move是要当需要形成闭包时才用；如果是lambda则是类似|| async {}
+			return Box::pin(async move {
 				// 这种方式有点粗暴，直接http code返回了401，其实自己想返回200，但是ApiResult里再细分；
-				// 毕竟这个是Api接口而不一定是网页打开
-				Err(Error::from(ErrorUnauthorized("抱歉，您没有权限访问哦啦啦～～")))
+				// 毕竟这个是Api接口而不一定是网页打开（可以了，原来少了个into_body()..
+				//Err(Error::from(ErrorUnauthorized("抱歉，您没有权限访问哦啦啦～～")))
+				Ok(req.into_response(
+					HttpResponse::Ok().body("抱歉您没有权限啦啦哦哦～").into_body()
+				))
+				//Either::Right()
 			});
 		}
 
