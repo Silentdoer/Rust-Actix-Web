@@ -4,6 +4,7 @@ mod enumerate;
 mod custom_error;
 mod regex_constants;
 mod custom_middleware;
+mod custom_guard;
 
 // TODO 在这个程序里这个又必须有，但是有的又可以省略下面两句代码，不知道为什么。。（莫非是redis_async版本太低所以必须用老版本的导入方式？）
 #[macro_use]
@@ -68,7 +69,8 @@ async fn main() -> std::io::Result<()> {
 			.data(redis_addr)
 			// 虽然可以直接用route，但是最好还是外部包一层service
 			.route("/name/{name}/gender/{gender}", web::get().to(route_set::index))
-			.service(web::resource("/ttt").route(web::get().to(route_set::foo)))
+			.service(web::resource("/ttt").route(web::get().to(route_set::foo)
+				.guard(custom_guard::MyHeaderGuard{head_val: "text/plain".to_owned()})))
 			// 不用route直接to表示任意Method都行，比如GET，HEAD，PUT；一般用于如logout这样的方法
 			.service(web::resource("/kkkk").to(route_set::kkkk)
 				// TODO guard::Header(...)表示请求必须是携带这个header，不过不好的是，值必须是application/json不能有;charset=uf8
