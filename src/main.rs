@@ -5,6 +5,7 @@ mod custom_error;
 mod regex_constants;
 mod custom_middleware;
 mod custom_guard;
+mod database;
 
 // TODO 在这个程序里这个又必须有，但是有的又可以省略下面两句代码，不知道为什么。。（莫非是redis_async版本太低所以必须用老版本的导入方式？）
 #[macro_use]
@@ -16,6 +17,8 @@ extern crate validator;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
+#[macro_use]
+extern crate diesel;
 
 use std::{thread, time};
 
@@ -26,7 +29,9 @@ use actix_web::http::{header, Method, StatusCode};
 use actix_session::CookieSession;
 use actix_files as fs;
 use actix_redis::RedisActor;
-use actix_web::web::ServiceConfig;
+use actix_web::web::{ServiceConfig, route};
+use diesel::r2d2::ConnectionManager;
+use diesel::PgConnection;
 
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
@@ -40,6 +45,8 @@ async fn main() -> std::io::Result<()> {
 		// redis（TODO 这个必须写到里面，写到外面，比如counter的位置会报错，暂不知道为什么）
 		// TODO 好像是说在里面创建的对象且设置为data，则redis_addr是ThreadLocal的对象？
 		let redis_addr = RedisActor::start("localhost:6379");
+		let manager = ConnectionManager::<PgConnection>::new("postgres://postgres:wyzpass@127.0.0.1/db_test");
+		let pool = r2d2::Pool::builder().build(manager).expect("Failed to create pool");
 
 		App::new()
 			// 可以将service之类的定义放到configure方法中（该方法类似XxConfig对象，包括了所有的配置），不过用处不是很大
@@ -67,6 +74,7 @@ async fn main() -> std::io::Result<()> {
 			// 还是用第三方的通用的好一点，不用actix的
 			.data(Client::default())
 			.data(redis_addr)
+			.data(pool.clone())
 			// 虽然可以直接用route，但是最好还是外部包一层service
 			.route("/name/{name}/gender/{gender}", web::get().to(route_set::index))
 			.service(web::resource("/ttt").route(web::get().to(route_set::foo)
@@ -98,6 +106,8 @@ async fn main() -> std::io::Result<()> {
 			.service(route_set::do_something)
 			.service(route_set::custom_error)
 			.service(route_set::custom_error2)
+			.service(route_set::db_diesel)
+			.service(route_set::db_diesel_post)
 			.service(web::resource("/test_lambda").to(|req: HttpRequest| match *req.method() {
 				Method::GET => HttpResponse::Ok(),
 				Method::POST => HttpResponse::MethodNotAllowed(),

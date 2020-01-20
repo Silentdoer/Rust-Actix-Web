@@ -19,6 +19,14 @@ use crate::custom_error::{do_something_random, CustomError, CommonError};
 use actix_web::error::ErrorBadRequest;
 use validator::Validate;
 
+use crate::database::schema::*;
+use crate::database::{User, UserDo};
+use diesel::r2d2::ConnectionManager;
+use diesel::pg::PgConnection;
+use diesel::prelude::*;
+
+type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
+
 // 和java里的Mapping方法不同点是，Rust里的get之类的，以及url都在在其他地方写的，所以单看route方法会很不直观
 // 所以这里建议在注释上写好get，url等方便查看（TODO 查下rust是否可以将enum转换为基础类型的值，actix是否支持自定义转换，
 // TODO 比如外界传的gender是-1这里表示是女，0表示未知，1表示是男，2表示是双性人，然后这里自动转换为自己写的性别enum）
@@ -339,4 +347,46 @@ pub async fn validate_test(data: web::Json<NeedValidData>, client: web::Data<Cli
 	println!("百度数据：{}", string);
 	Ok(string)*/
 	Ok("暂时没用".to_owned())
+}
+
+#[get("/db_diesel/{id}")]
+pub async fn db_diesel(info: web::Path<i32>, pool: web::Data<Pool>) -> Result<HttpResponse, Error> {
+	// TODO 还能在方法里面use（之前只知道可以在方法了里面创建方法，现在还可以创建结构类型）
+	use crate::database::schema::tb_user::dsl::*;
+	struct Aa {
+		pro: i32
+	}
+	// 生成uuid算法的等级为v4
+	let uuid = format!("{}", uuid::Uuid::new_v4());
+	println!("uuid: {}", uuid);
+	let conn = &pool.get().unwrap();
+	// id对应table!{tb_user里的id
+	let mut result = tb_user.filter(id.eq(&info.into_inner())).load::<crate::database::User>(conn);
+	match result {
+		// TODO 注意，这一层是指SQL语句没有问题（包括存在表，用户权限够等），但不代表select出来有数据，所以还要加一层match
+		Ok(mut items) => {
+			Ok(HttpResponse::Ok().body(match &items.pop() {
+				Some(item) => serde_json::to_string(item).unwrap(),
+				None => "没有数据".to_owned()
+			}))
+		},
+		Err(e) => {
+			Err(ErrorBadRequest(format!{"{:?}", e}))
+		}
+	}
+}
+
+// URL里不能有中文，需要进行URLEncoded（Chrome表面上可以写中文，但是发送数据时是进行了转换的）
+#[get("/db_diesel_post/{name}/{age}")]
+pub async fn db_diesel_post(info: web::Path<(String, i32)>, pool: web::Data<Pool>) -> Result<HttpResponse, Error> {
+	let (a, b) = info.into_inner();
+	use crate::database::schema::tb_user::dsl::*;
+	let conn = &pool.get().unwrap();
+	let result = diesel::insert_into(tb_user).values(&UserDo {id: None, name: a, age: b }).execute(conn);
+	// Some或Err是在if let左边
+	if let Err(err) = result {
+		Err(ErrorBadRequest(format!("{:?}", err)))
+	} else {
+		Ok(HttpResponse::Ok().body("插入数据成功"))
+	}
 }
