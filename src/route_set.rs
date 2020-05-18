@@ -97,7 +97,23 @@ pub async fn test2(info: web::Query<Stud>) -> impl Responder {
 	format!("￥￥hello {} is sfsd {}", info.name, info.age)
 }
 
+// 以后可以写个宏来定义结构体，否则每个handler上面的QueryStr都得写不同的名字。。
+#[derive(Deserialize)]
+struct QueryStr {
+	name: Option<String>
+}
+
+// 函数参数上的类型如果写在函数里是无法被函数参数发现的，所以这个有点蛋疼，多个RPath还必须不重名【但是实际上这个RPath或
+// RHeader或RQuery都是只在某个请求里用到，其他里是不会用到的，，然后也无法在全局里用{}加上一个作用域【或许可以用宏实现】
+#[get("/test12")]
+pub async fn test12(info: web::Query<QueryStr>) -> impl Responder {
+	// 这种情况下name就必须是pub了，如果只用于serde序列化可以不是pub
+	format!("33￥￥444hello {} is sfsd", if let Some(d) = info.into_inner().name {d} else {"未提供".to_string()})
+}
+
 // TODO 貌似不能这么写，会报错。。（官网上的例子貌似也是必须自己写成一个struct，如上面的Stud） /test2?name=kkk&age=88（这里的key名字可以随意。。）
+// 但是这个应该是可以被优化的（但是不应该被优化，因为QueryString是可以不按顺序来写，如name=8&age=9和age=9&name=8是等价的
+// 如果可以是Path则会出问题
 #[get("/test4")]
 pub async fn test4(info: web::Query<(String, String)>) -> impl Responder {
 	// 这种情况下name就必须是pub了，如果只用于serde序列化可以不是pub

@@ -3,7 +3,7 @@ mod student;
 mod enumerate;
 mod custom_error;
 mod regex_constants;
-mod custom_middleware;
+mod middleware;
 mod custom_guard;
 mod database;
 
@@ -23,7 +23,7 @@ extern crate diesel;
 use std::{thread, time};
 
 use actix_rt::System;
-use actix_web::{middleware, web, guard, App, HttpRequest, HttpServer, HttpResponse, Responder, client::Client};
+use actix_web::{middleware as awmw, web, guard, App, HttpRequest, HttpServer, HttpResponse, Responder, client::Client};
 use std::sync::Mutex;
 use actix_web::http::{header, Method, StatusCode};
 use actix_session::CookieSession;
@@ -60,13 +60,13 @@ async fn main() -> std::io::Result<()> {
 			})
 			.app_data(counter.clone())
 			// 开启压缩（默认的貌似是gzip？）
-			.wrap(middleware::Compress::default())
-			.wrap(middleware::Logger::default())
+			.wrap(awmw::Compress::default())
+			.wrap(awmw::Logger::default())
 			// 这个貌似也能实现middleware的功能，传一个lambda表达式去
 			//.wrap_fn(..)
 			// 只需要结构体名即可（不是传名字即可，而是这个结构体很特别不需要{}也相当于new了对象，不过最好还是加上{}）
 			// TODO 注意，middleware的处理一定是在handler处理前和处理后处理
-			.wrap(custom_middleware::SayHi{})
+			.wrap(middleware::SayHi{})
 			// 是指为session分配32个字节？【返回的响应头里会有set-cookie: actix-session=xxxxxx一大串（貌似就是32字节）
 			.wrap(CookieSession::signed(&[0; 32]).secure(false))
 			// 貌似是指JSON数据最大不超过4096个字节？？（但是用8测试了下好像没有生效，还是说虽然填了8但是实际上它有个最小值?）
@@ -95,6 +95,7 @@ async fn main() -> std::io::Result<()> {
 			.service(route_set::test2)
 			// 错误的例子，尽管编译期间不报错
 			.service(route_set::test4)
+			.service(route_set::test12)
 			.service(route_set::test5)
 			.service(route_set::test6)
 			.service(route_set::favicon)
