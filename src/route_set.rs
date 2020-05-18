@@ -98,6 +98,8 @@ pub async fn test2(info: web::Query<Stud>) -> impl Responder {
 }
 
 // 以后可以写个宏来定义结构体，否则每个handler上面的QueryStr都得写不同的名字。。
+// 宏好像也不现实，就算宏可以将QueryStr改成QueryStr1之类的，后面用的时候还是不能都写QueryStr
+// 还是老老实实写Query1，Query2等等吧
 #[derive(Deserialize)]
 struct QueryStr {
 	name: Option<String>
@@ -105,6 +107,7 @@ struct QueryStr {
 
 // 函数参数上的类型如果写在函数里是无法被函数参数发现的，所以这个有点蛋疼，多个RPath还必须不重名【但是实际上这个RPath或
 // RHeader或RQuery都是只在某个请求里用到，其他里是不会用到的，，然后也无法在全局里用{}加上一个作用域【或许可以用宏实现】
+// 这里的Query起到了类似SpringBoot里的@RequestQuery的作用，
 #[get("/test12")]
 pub async fn test12(info: web::Query<QueryStr>) -> impl Responder {
 	// 这种情况下name就必须是pub了，如果只用于serde序列化可以不是pub
