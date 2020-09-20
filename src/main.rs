@@ -33,7 +33,7 @@ use actix_web::web::{ServiceConfig, route};
 use diesel::r2d2::ConnectionManager;
 use diesel::PgConnection;
 
-#[actix_rt::main]
+#[actix_web::main]
 async fn main() -> std::io::Result<()> {
 	// info trace debug，其实这里可以给出warn或error级别的等级，
 	std::env::set_var("RUST_LOG", "actix_web=info, actix_server=info");

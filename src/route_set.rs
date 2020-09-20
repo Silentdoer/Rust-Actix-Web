@@ -32,7 +32,7 @@ type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
 // TODO 比如外界传的gender是-1这里表示是女，0表示未知，1表示是男，2表示是双性人，然后这里自动转换为自己写的性别enum）
 // get /name/{name}/gender/{gender}
 pub async fn index(info: web::Path<(String, i32)>) -> Result<String> {
-	Ok(format!("Welcome {}! gender: {}", info.0, info.1))
+	Ok(format!("Welcome {}! gender: {}", info.0.0, info.0.1))
 }
 
 pub async fn foo() -> &'static str {
@@ -81,13 +81,13 @@ pub async fn test1(info: web::Path<Stud>) -> impl Responder {
 pub async fn test5(info: web::Path<(String, i32)>) -> impl Responder {
 	// 这种情况下name就必须是pub了，如果只用于serde序列化可以不是pub
 	// 这里又可以不需要&info.0，有点搞不懂。。
-	format!("TTT {} is id {}", info.0, info.1)
+	format!("TTT {} is id {}", info.0.0, info.0.1)
 }
 
 #[get("/test6/{name}/{age}")]
 pub async fn test6(info: web::Path<(String, GenderEnum)>) -> impl Responder {
 	// 这种情况下name就必须是pub了，如果只用于serde序列化可以不是pub
-	format!("TTT {} is id {:?}", info.0, info.1)
+	format!("TTT {} is id {:?}", info.0.0, info.0.1)
 }
 
 // /test2?name=kkk&age=88
@@ -293,9 +293,9 @@ pub async fn redis_hset(info: web::Path<(String, String, String)>
 	// TODO 这里必须是&info.0，而上面的不用貌似是因为resp_array!对参数的处理不同导致的。。
 	let res = redis.send(Command(resp_array![
 									"HSET",
-									&info.0,
-									&info.1,
-									&info.2
+									&info.0.0,
+									&info.0.1,
+									&info.0.2
 								])).await?;
 	match res {
 		// hset和del一样返回(integer)1【注意其实就是返回1，前面的是指类型是integer）
